@@ -19,8 +19,24 @@ if [[ "${AUTO_UPDATE}" == "1" ]]; then
     tar -xvf ${DOWNLOAD_LINK##*/} > /dev/null 2>&1
     rm -rf ${DOWNLOAD_LINK##*/} run.sh > /dev/null 2>&1
     echo -e "${Text} ${BLUE}CitizenFX Resources updated successfully!${NC}"
-else 
+else
     echo -e "${Text} ${BLUE}Auto Update is disabled!${NC}"
+fi
+
+# Patch yarn_builder.js to use system Node instead of FXServer's bundled Node 22
+# Workaround for https://github.com/citizenfx/fivem/issues/3892
+YARN_BUILDER="/home/container/alpine/opt/cfx-server/citizen/system_resources/yarn/yarn_builder.js"
+if [ -f "$YARN_BUILDER" ]; then
+    if grep -q "execPath: '/usr/bin/node'" "$YARN_BUILDER"; then
+        echo -e "${Text} ${BLUE}yarn_builder.js already patched to use system Node.${NC}"
+    else
+        sed -i "s|stdio: 'pipe',|stdio: 'pipe',\n\t\t\t\texecPath: '/usr/bin/node',|" "$YARN_BUILDER"
+        if grep -q "execPath: '/usr/bin/node'" "$YARN_BUILDER"; then
+            echo -e "${Text} ${GREEN}Patched yarn_builder.js to use system Node (/usr/bin/node) instead of bundled Node.${NC}"
+        else
+            echo -e "${RED}[WARNING] Failed to patch yarn_builder.js - Yarn resource builds may fail.${NC}"
+        fi
+    fi
 fi
 
 echo -e "${Text} ${BLUE}Preparing environment variables...${NC}"
